@@ -1,0 +1,969 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>COP Project Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: sticky top bar with tabs; Find = filter rail (left) + results (right), stacks on phones */
+/* Blue Power Partners brand, single light theme (the brand's content-slide look): navy bar on top and bottom,
+   white ground, Grey 20 panels, BPP Blue for titles and controls, Blue 60 for highlights, Open Sans throughout. */
+:root{
+  color-scheme:light;
+  --bg:#ffffff; --surface:#f2f2f2; --surface-2:#e9efef; --line:#d7d7d7; --line-strong:#a0a0a0;
+  --title:#002f4f; --ink:#404f64; --ink-2:#404f64; --ink-3:#646464;
+  --accent:#002f4f; --accent-ink:#ffffff; --accent-soft:#e9efef; --hi:#0084de; --hi-text:#00558e;
+  --navy:#002f4f; --navy-2:#00558e; --on-navy-2:#97d5ff; --on-navy-hi:#3bb0ff;
+  --sand:#fff7d6; --sand-line:#dfd5af;
+  --mono-f:#002f4f; --jacket-f:#0084de; --float-f:#aba48b; --multi-f:#255a61; --tbd-f:#a0a0a0;
+  --good:#6e9600; --good-soft:#ffffff; --warn:#ffc000; --warn-soft:#fff7d6; --bad:#a0a0a0; --bad-soft:#ffffff;
+  --hold:#b90000; --hold-soft:#ffffff;
+  --f-display:"Open Sans","Segoe UI",Arial,sans-serif;
+  --f-body:"Open Sans","Segoe UI",Arial,sans-serif;
+  --f-mono:"Open Sans","Segoe UI",Arial,sans-serif;
+  --r:8px;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--f-mono);font-size:.86em}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:1400px;margin:0 auto;padding:10px 20px 0;display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 24px}
+.brand{display:flex;align-items:center;gap:10px;padding-bottom:10px}
+.brand svg{flex:none}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:22px;letter-spacing:.01em;margin:0;line-height:1}
+.brand small{display:block;font-size:12.5px;color:var(--ink-3);margin-top:3px}
+.tabs{display:flex;gap:2px;margin-left:auto;overflow-x:auto}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px 9px;font-family:var(--f-display);font-weight:600;font-size:16px;letter-spacing:.02em;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.tab .count{font-family:var(--f-mono);font-size:12px;background:var(--surface-2);border-radius:10px;padding:1px 7px;margin-left:6px;color:var(--ink-2)}
+
+main{max-width:1400px;margin:0 auto;padding:20px 20px 60px}
+.banner{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;background:var(--warn-soft);border:1px solid var(--line);color:var(--ink);border-radius:var(--r);padding:10px 14px;margin-bottom:16px;font-size:14px}
+.banner b{color:var(--warn)}
+.banner .sp{flex:1}
+
+/* buttons & chips */
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-strong);background:var(--surface);border-radius:6px;padding:6px 12px;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08);color:var(--accent-ink)}
+.btn.danger{border-color:var(--hold);color:var(--hold)}
+.btn.ghost{border-color:transparent;background:none}
+.btn.sm{padding:3px 9px;font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line-strong);background:var(--surface);border-radius:999px;padding:4px 11px;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;color:var(--ink)}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip .sw{width:9px;height:9px;border-radius:2px;flex:none}
+.chip .n{font-family:var(--f-mono);font-size:11.5px;opacity:.7}
+
+/* find layout */
+.find{display:grid;grid-template-columns:320px minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:900px){.find{grid-template-columns:minmax(0,1fr)}}
+.det-note{margin:0;font-size:12px;color:var(--ink-3)}
+.rail-toggle{display:none;justify-self:start}
+@media (max-width:900px){.rail-toggle{display:inline-flex}.rail.collapsed{display:none}}
+.rail{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:4px 16px 16px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px);max-height:calc(100vh - 96px);overflow:auto}
+@media (max-width:900px){.rail{position:static;max-height:none}}
+.fs{border:0;margin:0;padding:14px 0;border-bottom:1px solid var(--line);display:grid;gap:8px;min-width:0}
+.fs:last-of-type{border-bottom:0}
+.fs legend,.lbl{font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);padding:0;margin-bottom:8px;display:flex;justify-content:space-between;width:100%}
+.fs legend .unit{font-family:var(--f-mono);text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink-3)}
+.range{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center}
+.range span{color:var(--ink-3)}
+.inp{width:100%;border:1px solid var(--line-strong);background:var(--surface);border-radius:6px;padding:6px 9px;font-size:14px;min-width:0}
+.inp:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.presets .chip{font-size:12.5px;padding:2px 9px}
+.toggle{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-2);cursor:pointer}
+.toggle input{accent-color:var(--accent);width:16px;height:16px}
+.ref{background:var(--accent-soft);border-radius:6px;padding:10px;display:grid;gap:6px}
+.ref p{margin:0;font-size:13px;color:var(--ink-2)}
+
+.res-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:14px}
+.res-head h2{font-family:var(--f-display);font-weight:600;font-size:22px;margin:0;line-height:1.1}
+.res-head h2 em{font-style:normal;color:var(--accent)}
+.res-head .sub{color:var(--ink-2);font-size:14px}
+.res-head .sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:5px 12px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--ink-2)}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.active-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.af{font-size:12.5px;background:var(--surface-2);border-radius:4px;padding:2px 8px;color:var(--ink-2)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:grid;gap:10px;cursor:pointer;text-align:left;transition:border-color .15s, box-shadow .15s;min-width:0}
+.card:hover{border-color:var(--accent);box-shadow:0 2px 10px rgba(10,40,55,.08)}
+.card-h{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.card h3{font-family:var(--f-display);font-weight:600;font-size:18px;line-height:1.15;margin:0;text-wrap:balance}
+.card .pno{font-size:12px;color:var(--ink-3);margin-top:2px}
+.score{flex:none;text-align:right}
+.score b{font-family:var(--f-display);font-size:22px;line-height:1;font-weight:700}
+.score small{display:block;font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
+.score.full b{color:var(--good)}
+.kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.kv div{min-width:0}
+.kv dt{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
+.kv dd{margin:0;font-weight:600;font-size:14.5px;overflow-wrap:anywhere}
+.kv dd.dim{color:var(--ink-3);font-weight:400}
+.badges{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.fb{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;border-radius:4px;padding:2px 7px;background:var(--surface-2)}
+.fb .sw{width:8px;height:8px;border-radius:2px}
+.hold{background:var(--hold-soft);color:var(--hold)}
+.who{display:flex;align-items:center;gap:8px;border-top:1px dashed var(--line);padding-top:10px;font-size:13.5px}
+.avatar{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:11.5px;font-family:var(--f-mono);flex:none}
+.avatar.none{background:var(--surface-2);color:var(--ink-3)}
+.who .dim{color:var(--ink-3)}
+.crit{display:flex;flex-wrap:wrap;gap:4px}
+.cm{font-size:11.5px;border-radius:3px;padding:1px 6px;display:inline-flex;gap:4px;align-items:center}
+.cm.y{background:var(--good-soft);color:var(--good)}
+.cm.p{background:var(--warn-soft);color:var(--warn)}
+.cm.n{background:var(--bad-soft);color:var(--bad);text-decoration:line-through;text-decoration-thickness:1px}
+.cm.u{background:var(--bad-soft);color:var(--bad)}
+
+/* phase track */
+.track{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+.track i{height:5px;border-radius:2px;background:var(--surface-2)}
+.track i.on{background:var(--accent)}
+.track i.cur{background:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.track-l{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2);margin-top:3px}
+.track-l b{font-weight:600;color:var(--ink)}
+
+/* depth gauge */
+.gauge{position:relative;height:18px}
+.gauge .sea{position:absolute;inset:6px 0 6px 0;border-radius:3px;background:linear-gradient(90deg,var(--accent-soft),var(--surface-2))}
+.gauge .dseg{position:absolute;top:3px;height:12px;border-radius:3px;background:var(--accent);min-width:4px;border:0}
+.gauge .tk{position:absolute;top:16px;font-size:10px;color:var(--ink-3);transform:translateX(-50%);font-family:var(--f-mono)}
+.gauge-wrap{padding-bottom:12px}
+
+.empty{background:var(--surface);border:1px dashed var(--line-strong);border-radius:var(--r);padding:30px;text-align:center;color:var(--ink-2)}
+.more{margin-top:22px}
+.more h3{font-family:var(--f-display);font-weight:600;font-size:17px;margin:0 0 10px;color:var(--ink-2)}
+
+/* chart */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.panel h3{font-family:var(--f-display);font-weight:600;font-size:18px;margin:0 0 2px}
+.panel .cap{color:var(--ink-2);font-size:13.5px;margin:0 0 10px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--ink-2);margin-bottom:6px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px}
+.chart-wrap{overflow-x:auto}
+svg text{fill:var(--ink-2);font-family:var(--f-body)}
+svg .gridl{stroke:var(--line);stroke-width:1}
+svg .axis-t{font-size:12px;fill:var(--ink-3)}
+svg .axis-n{font-size:11px;font-family:var(--f-mono);fill:var(--ink-3)}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--surface);border-radius:6px;padding:8px 10px;font-size:13px;max-width:260px;z-index:50;box-shadow:0 4px 18px rgba(0,0,0,.25)}
+.tip b{display:block;font-size:14px}
+.tip span{opacity:.8}
+
+/* overview */
+.ov{display:grid;gap:16px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.kpi b{display:block;font-family:var(--f-display);font-size:34px;font-weight:700;line-height:1}
+.kpi span{font-size:13px;color:var(--ink-2)}
+.ov-row{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px}
+@media (max-width:900px){.ov-row{grid-template-columns:minmax(0,1fr)}}
+.hbar{display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr) 40px;gap:8px 10px;align-items:center;font-size:13.5px}
+.hbar .bar{display:flex;gap:2px;height:20px}
+.hbar .bar i{display:block;height:100%;border-radius:0}
+.hbar .bar i:first-child{border-radius:4px 0 0 4px}
+.hbar .bar i:last-child{border-radius:0 4px 4px 0}
+.hbar .bar i:only-child{border-radius:4px}
+.hbar .v{font-family:var(--f-mono);font-size:12.5px;text-align:right}
+.comp{display:grid;gap:9px}
+.comp-r{display:grid;grid-template-columns:150px minmax(0,1fr) 64px;gap:10px;align-items:center;font-size:13.5px}
+.comp-r .t{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.comp-r .t i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.comp-r .v{font-family:var(--f-mono);font-size:12.5px;text-align:right;color:var(--ink-2)}
+
+/* database */
+.db-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.db-bar .inp{max-width:300px}
+.db-bar .sp{flex:1}
+.tbl-wrap{overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);max-height:calc(100vh - 230px)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;white-space:nowrap}
+td.wrap{white-space:normal;min-width:220px;max-width:340px}
+th{position:sticky;top:0;background:var(--surface-2);font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);cursor:pointer;user-select:none;z-index:1}
+th[aria-sort="ascending"]::after{content:" ▲";font-size:9px}
+th[aria-sort="descending"]::after{content:" ▼";font-size:9px}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--accent-soft)}
+td.miss{color:var(--ink-3)}
+tr.changed td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+.help{margin-top:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.help .panel p,.help .panel li{font-size:13.5px;color:var(--ink-2)}
+.help .panel ol{padding-left:18px;margin:6px 0 0}
+.help code{font-family:var(--f-mono);font-size:12px;background:var(--surface-2);padding:1px 4px;border-radius:3px}
+
+/* modal / drawer */
+.scrim{position:fixed;inset:0;background:rgba(5,15,20,.45);z-index:40;display:flex;justify-content:flex-end}
+.drawer{background:var(--surface);width:min(560px,100%);height:100%;overflow:auto;padding:20px 22px calc(30px + env(safe-area-inset-bottom,0px));box-shadow:-10px 0 30px rgba(0,0,0,.2);display:grid;gap:16px;align-content:start}
+.drawer-h{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.drawer h2{font-family:var(--f-display);font-size:26px;font-weight:700;margin:0;line-height:1.1;text-wrap:balance}
+.dl{display:grid;grid-template-columns:170px minmax(0,1fr);gap:0;border-top:1px solid var(--line)}
+.dl dt,.dl dd{padding:8px 0;border-bottom:1px solid var(--line);margin:0;font-size:14px}
+.dl dt{color:var(--ink-2)}
+.dl dd{font-weight:600;overflow-wrap:anywhere}
+.dl dd.dim{color:var(--ink-3);font-weight:400;font-style:italic}
+.contact{background:var(--accent-soft);border-radius:var(--r);padding:14px;display:flex;gap:12px;align-items:center}
+.contact .avatar{width:40px;height:40px;font-size:14px}
+.contact p{margin:0;font-size:13.5px;color:var(--ink-2)}
+.contact strong{font-size:16px;color:var(--ink)}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.form .full{grid-column:1/-1}
+.form label{display:grid;gap:4px;font-size:13px;color:var(--ink-2);font-weight:600}
+.form .hint{font-weight:400;color:var(--ink-3);font-size:12px}
+.form .checks{display:flex;flex-wrap:wrap;gap:6px 14px;font-weight:400;color:var(--ink)}
+.form .checks label{display:flex;align-items:center;gap:5px;font-weight:400;color:var(--ink);font-size:14px}
+@media (max-width:520px){.form{grid-template-columns:minmax(0,1fr)}.dl{grid-template-columns:minmax(0,1fr)}.dl dt{border-bottom:0;padding-bottom:0}}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.actions .sp{flex:1}
+.confirm{background:var(--hold-soft);border-radius:6px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:9px 16px;border-radius:6px;font-size:14px;z-index:60}
+
+/* ===== BPP brand layer ===== */
+body{font-weight:400;color:var(--ink)}
+h1,h2,h3,.card h3,.drawer h2,.panel h3,.res-head h2{color:var(--title)}
+.mono{font-family:var(--f-body);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.top{background:var(--navy);border-bottom:0}
+.brand img{height:34px;width:auto;display:block}
+.brand .sep{width:1px;height:30px;background:var(--navy-2)}
+.brand h1{color:#fff;font-weight:600;font-size:19px;letter-spacing:0}
+.brand small{color:var(--on-navy-2);font-weight:300}
+.tab{color:var(--on-navy-2);font-weight:600;font-size:14.5px;letter-spacing:.01em}
+.tab:hover{color:#fff}
+.tab[aria-selected="true"]{color:#fff;border-bottom-color:var(--on-navy-hi)}
+.tab .count{background:var(--navy-2);color:#fff;font-family:var(--f-body);font-weight:700}
+.foot{background:var(--navy);color:#fff}
+.foot-in{max-width:1400px;margin:0 auto;padding:10px 20px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;gap:12px;font-size:11px;letter-spacing:.06em}
+.foot-in span:first-child{color:var(--on-navy-2);font-weight:300;letter-spacing:0}
+.foot-in b{font-weight:700}
+.banner{background:var(--sand);border:1px solid var(--sand-line)}
+.banner b{color:var(--title)}
+.btn{border-color:var(--line-strong);background:#fff;font-weight:600;border-radius:6px}
+.btn:hover{border-color:var(--title);color:var(--title)}
+.btn.primary{background:var(--navy);border-color:var(--navy)}
+.btn.primary:hover{background:var(--navy-2);border-color:var(--navy-2);filter:none}
+.chip{background:#fff;border-color:var(--line-strong);font-weight:400}
+.chip:hover{border-color:var(--title)}
+.chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+.chip .n{font-family:var(--f-body);font-weight:600}
+.rail{background:var(--surface);border:0}
+.fs{border-bottom-color:var(--line)}
+.fs legend,.lbl{font-family:var(--f-body);font-weight:700;font-size:12px;letter-spacing:.06em;color:var(--hi-text);align-items:center}
+.fs legend .lg{display:inline-flex;align-items:center;gap:8px}
+.fs legend img{width:26px;height:26px}
+.fs legend .unit{font-family:var(--f-body);font-weight:400;color:var(--ink-3)}
+.inp{background:#fff;border-color:var(--line-strong)}
+.inp:focus{border-color:var(--hi);box-shadow:0 0 0 3px rgba(0,132,222,.18)}
+.ref{background:var(--sand);border:1px solid var(--sand-line)}
+.res-head h2{font-weight:600;font-size:24px;position:relative;padding-left:20px}
+.res-head h2::before{content:"";position:absolute;left:0;top:-2px;width:8px;height:calc(100% + 26px);background:var(--navy)}
+.res-head h2 em{color:var(--hi);font-weight:300}
+.res-head .sub{font-weight:300;padding-left:20px}
+.seg{border-color:var(--navy)}
+.seg button{background:#fff;color:var(--title)}
+.seg button+button{border-left-color:var(--navy)}
+.seg button[aria-pressed="true"]{background:var(--navy);color:#fff}
+.af{background:var(--navy);color:#fff;border-radius:999px;padding:3px 11px;font-weight:700;font-size:11.5px}
+.card{background:var(--surface);border:0;box-shadow:none}
+.card:hover{background:var(--surface-2);border:0;box-shadow:inset 0 0 0 2px var(--hi)}
+.card h3{font-weight:700;font-size:16.5px}
+.score b{font-family:var(--f-body);font-weight:300;font-size:30px;color:var(--hi)}
+.score.full b{color:var(--hi)}
+.score small{font-weight:700;color:var(--ink-3)}
+.kv dt{font-weight:700;color:var(--ink-3);font-size:10.5px}
+.kv dd{color:var(--title);font-weight:600}
+.fb{background:#fff;color:var(--title);font-weight:600}
+.hold{background:#fff;color:var(--hold)}
+.track i{background:var(--line)}
+.track i.on,.track i.cur{background:var(--navy)}
+.track i.cur{box-shadow:none;background:var(--hi)}
+.track-l b{color:var(--title)}
+.gauge .sea{background:#fff;box-shadow:inset 0 0 0 1px var(--line)}
+.gauge .dseg{background:var(--hi)}
+.cm{background:#fff;color:var(--ink);text-decoration:none!important;font-weight:600;border:1px solid var(--line);padding:1px 7px 1px 6px}
+.cm::before{content:"";width:7px;height:7px;border-radius:50%;flex:none}
+.cm.y,.cm.p{background:#fff;color:var(--ink)}
+.cm.y::before{background:var(--good)}
+.cm.p::before{background:var(--warn)}
+.cm.n::before,.cm.u::before{background:var(--bad)}
+.cm.n,.cm.u{color:var(--ink-3);font-weight:400}
+.who{border-top:1px solid var(--line)}
+.who img,.contact img{width:30px;height:30px;flex:none}
+.who b{color:var(--title)}
+.contact{background:var(--sand);border:1px solid var(--sand-line)}
+.contact img{width:42px;height:42px}
+.contact strong{color:var(--title)}
+.panel{background:var(--surface);border:0}
+.panel .cap{font-weight:300}
+.kpi{background:var(--surface);border:0}
+.kpi b{font-family:var(--f-body);font-weight:300;font-size:40px;color:var(--hi)}
+.kpi span{color:var(--ink-3)}
+.kpi img{width:30px;height:30px;float:right}
+.comp-r .t{background:#fff}
+.comp-r .t i{background:var(--hi)}
+.comp-r .v,.hbar .v{font-family:var(--f-body);font-weight:600}
+.tbl-wrap{background:#fff;border-color:var(--line)}
+th{background:var(--navy);color:#fff;font-family:var(--f-body);font-weight:700;font-size:11.5px;letter-spacing:.04em}
+td:first-child{font-weight:700;color:var(--title)}
+tbody tr:hover td{background:var(--surface-2)}
+tr.changed td{background:var(--sand)}
+tr.changed td:first-child{box-shadow:none}
+.help code{font-family:var(--f-body);background:#fff}
+.drawer{box-shadow:none}
+.dl dd{color:var(--title)}
+.confirm{background:#fff;border:1px solid var(--hold)}
+.empty{background:var(--surface);border:0;font-weight:300}
+.empty img{width:42px;height:42px;display:block;margin:0 auto 10px}
+.tip{background:var(--navy);color:#fff}
+svg text{font-family:var(--f-body)}
+svg .axis-n{font-family:var(--f-body);fill:var(--ink-3)}
+.toast{background:var(--navy);color:#fff}
+.legend{color:var(--ink)}
+.more h3{color:var(--title);font-weight:600}
+.chip[aria-pressed="true"] .sw{box-shadow:0 0 0 1.5px #fff}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <img src="assets/bpp-logo-white.svg" alt="Blue Power Partners">
+      <span class="sep" aria-hidden="true"></span>
+      <div><h1>COP Project Finder</h1><small>Find similar offshore wind projects and who to ask</small></div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-find" data-tab="find" aria-selected="true">Find similar</button>
+      <button class="tab" role="tab" id="tab-overview" data-tab="overview" aria-selected="false">Overview</button>
+      <button class="tab" role="tab" id="tab-database" data-tab="database" aria-selected="false">Database <span class="count" id="dbCount">0</span></button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div id="banner"></div>
+
+  <!-- FIND -->
+  <section id="view-find" role="tabpanel">
+    <div class="find">
+      <button class="btn rail-toggle" id="railToggle" type="button" aria-expanded="false">Show filters</button>
+      <aside class="rail" id="rail" aria-label="Filters">
+        <fieldset class="fs">
+          <legend>Search</legend>
+          <input class="inp" id="q" type="search" placeholder="Project name, number or responsible">
+        </fieldset>
+        <fieldset class="fs">
+          <legend><span class="lg"><img src="assets/icon-compare.svg" alt="">Start from a project</span></legend>
+          <select class="inp" id="refSel"><option value="">Choose a project to compare…</option></select>
+          <div class="ref" id="refBox" hidden><p id="refTxt"></p><button class="btn sm" id="refClear" type="button">Clear comparison</button></div>
+        </fieldset>
+        <fieldset class="fs">
+          <legend><span class="lg"><img src="assets/icon-milestone.svg" alt="">Phase</span></legend>
+          <div class="chips" id="fPhase"></div>
+          <label class="toggle"><input type="checkbox" id="fHold" checked> Include projects on hold</label>
+        </fieldset>
+        <fieldset class="fs">
+          <legend><span class="lg"><img src="assets/icon-tower.svg" alt="">Foundation type</span></legend>
+          <div class="chips" id="fFound"></div>
+          <div class="lbl" style="margin:6px 0 0">Foundation detail</div>
+          <div class="chips" id="fDet"></div>
+          <p class="det-note" id="detNote"></p>
+        </fieldset>
+        <fieldset class="fs">
+          <legend><span class="lg"><img src="assets/icon-capacity.svg" alt="">Project capacity</span> <span class="unit">MW</span></legend>
+          <div class="range"><input class="inp num" id="capMin" type="number" min="0" placeholder="min"><span>to</span><input class="inp num" id="capMax" type="number" min="0" placeholder="max"></div>
+          <div class="chips presets" id="capPre"></div>
+        </fieldset>
+        <fieldset class="fs">
+          <legend><span class="lg"><img src="assets/icon-nacelle.svg" alt="">Turbine model</span></legend>
+          <div class="chips" id="fTurb"></div>
+        </fieldset>
+        <fieldset class="fs">
+          <legend><span class="lg"><img src="assets/icon-water.svg" alt="">Water depth</span> <span class="unit">m</span></legend>
+          <div class="range"><input class="inp num" id="dMin" type="number" min="0" placeholder="min"><span>to</span><input class="inp num" id="dMax" type="number" min="0" placeholder="max"></div>
+          <div class="chips presets" id="dPre"></div>
+        </fieldset>
+        <div style="padding-top:12px"><button class="btn" id="reset" type="button">Reset all filters</button></div>
+      </aside>
+
+      <div style="min-width:0">
+        <div class="res-head">
+          <div><h2 id="resTitle"></h2><div class="sub" id="resSub"></div></div>
+          <div class="sp"></div>
+          <label class="toggle" id="onlyFullWrap"><input type="checkbox" id="onlyFull"> Full matches only</label>
+          <div class="seg" role="group" aria-label="View">
+            <button type="button" id="vCards" aria-pressed="true">Cards</button>
+            <button type="button" id="vChart" aria-pressed="false">Depth × capacity</button>
+          </div>
+        </div>
+        <div class="active-filters" id="afs"></div>
+        <div id="results"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OVERVIEW -->
+  <section id="view-overview" role="tabpanel" hidden>
+    <div class="ov" id="ov"></div>
+  </section>
+
+  <!-- DATABASE -->
+  <section id="view-database" role="tabpanel" hidden>
+    <div class="db-bar">
+      <input class="inp" id="dbQ" type="search" placeholder="Search the database">
+      <div class="sp"></div>
+      <button class="btn primary" id="addBtn" type="button">+ Add project</button>
+      <button class="btn" id="dlCsv" type="button">Download CSV</button>
+      <button class="btn" id="dlXlsx" type="button">Download Excel</button>
+      <button class="btn" id="cpCsv" type="button">Copy CSV</button>
+      <label class="btn" for="imp">Import CSV / Excel</label>
+      <input type="file" id="imp" accept=".csv,.xlsx,.xls" hidden>
+    </div>
+    <div class="tbl-wrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+    <div class="help">
+      <div class="panel">
+        <h3>Editing the database</h3>
+        <p>Click any row to edit it, or add a new project. Edits are kept in your browser until they are published, and rows you changed are marked on the left.</p>
+      </div>
+      <div class="panel">
+        <h3>Publishing changes for everyone</h3>
+        <ol>
+          <li>Click <b>Download CSV</b> (or <b>Copy CSV</b>).</li>
+          <li>In the GitHub repository, open <code>data/projects.csv</code>, choose <b>Edit</b>, paste or upload the new file and commit.</li>
+          <li>The site updates for everyone within a minute or two.</li>
+        </ol>
+      </div>
+      <div class="panel">
+        <h3>Field conventions</h3>
+        <p>Ranges use a dash (<code>35-49</code>). Capacity may be in MW (<code>806</code>) or GW (<code>1.2 GW</code>). Several foundation types are separated with <code>;</code>. Phase is one of 1 to 4 or Operational.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot"><div class="foot-in"><span>Project data from the COP overview. Internal use.</span><b>BLUE POWER PARTNERS</b></div></footer>
+<div id="layer"></div>
+<div class="tip" id="tip" hidden></div>
+
+<script id="seed" type="text/csv">Project Name,Project Number,Project Responsible,Phase,On Hold,Foundation Type,Foundation Detail,Turbine Rating (MW),Turbine Model,Bottom Flange Dia (m),Project Size (MW),Nr of Turbines,Water Depth (m),Notes/Remarks
+Vineyard Wind 1,,,4 - Under construction,No,Monopile,TP,13,GE Haliade-X,,806,,35-49,
+Vineyard NE 522,,,1 - Before auction,Yes,Monopile,TP-less,,TBD,,1200,,36-38,
+Excelsior Wind (544),,,1 - Before auction,Yes,Monopile,TP-less,,TBD,,1350,,2,
+Nortada OWF,,,1 - Before auction,No,Floating,,,TBD,,2000,,54-190,
+North Irish Sea Array (NISA),,,1 - Before auction,No,Monopile,TBD,15,TBC (Vestas V236-15MW),,700,,30-63,
+Morecambe,,,1 - Before auction,No,Monopile,TBD,,TBD,,480,,70,
+Pentland,,,1 - Before auction,Yes,Floating,,8.6,,,100,,20-96,
+Zeevonk,,,1 - Before auction,No,Monopile,TP-less,15,Vestas V236 - TBD,,1000,,6-50,
+Danish OWF Tender - Hesselø,,,2 - Tendering to contractors,No,TBD,,,,,0.8-1.2 GW,,20-45,
+Danish OWF Tender - Kattegat II,,,2 - Tendering to contractors,No,TBD,,,,,1 GW,,20-45,
+Danish OWF Tender - Kriegers Flak II,,,2 - Tendering to contractors,No,TBD,,,,,1 GW,,20-45,
+Danish OWF Tender - North Sea 1,,,2 - Tendering to contractors,No,TBD,,,,,3 GW,,20-45,3 x 1 GW sites.
+Fortuuna Livii,,,1 - Before auction,No,Monopile,TP-less - TBD,15,Vestas V236 -TBD,,1-1.5 GW,,37.7-40.6,
+Ichnusa Wind Power,,,1 - Before auction,No,Floating,,,TBD,,510,,19-40,
+Poseidon,,,1 - Before auction,No,Floating,,,TBD,,1000,,60-240,
+Nurax,,,1 - Before auction,No,Floating,,,TBD,,462,,,
+Tyrrhenian,,,1 - Before auction,No,Floating,,,TBD,,540,,100-200,
+7 Sea Med,,,1 - Before auction,No,Floating,,,TBD,,255,,200-350,
+La Gan Offshore Wind Farm sites,,,1 - Before auction,No,Monopile,TBD,12+,,,3.5 GW,,10-35,Foundation marked '?' in source sheet.
+San Miguel Bay (Urdaneta),JOB11285,SAH,1 - Before auction,No,Monopile; Multipile,TBD,8.25,,,1000,,8.1,
+Zhong Neng,,,Operational,No,Jacket,PP,9.5,Vestas V164,,300,,27-40,
+ChangFang & Xidao,,,Operational,No,Jacket,PP,9.5,Vestas V164,,600,,26-46,
+Fengmiao 1,,,4 - Under construction,No,Jacket,PP,15,,,500,,53-60,
+Unnamed project (Excel row 29),,,,No,Jacket,TBD,,TBD,,600,,53-60,"Name missing in source sheet - same depth as Fengmiao 1, possibly Fengmiao II. Please confirm."
+Jeonnam 1,,,Operational,No,Monopile,TP,10,SG 10-193DD,,96,,5-20,
+Jeonnam 2,,,1 - Before auction,No,Monopile,TBD,,TBD,,400,,5-20,
+Jeonnam 3,,,1 - Before auction,No,Monopile,TBD,,TBD,,400,,5-20,
+Taean,,,1 - Before auction,No,Monopile,TBD,,TBD,,500,,5-20,Foundation marked '?' in source sheet.
+Haesong 1,,,1 - Before auction,No,Jacket,TBD,14-15,TBD,,504,,27-31,
+Haesong 3,,,1 - Before auction,No,Jacket,TBD,14-15,TBD,,504,,27-31,
+Haewoori,,,1 - Before auction,No,Floating,,,TBD,,500,,120-130,
+Star of the South,,,1 - Before auction,No,Monopile,TBD,,TBD,,2.2 GW,,15-53,
+Kut-Wut Brataualung,,,1 - Before auction,No,Monopile,TBD,,TBD,,2.2GW,,,
+South Taranaki,,,1 - Before auction,No,Monopile,TBD,,TBD,,1 GW,,50,
+California North,,,1 - Before auction,No,Floating,,,TBD,,1+ GW,,750-1000,
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* ===== Configuration =====
+   DATA_URL: where the published database lives. Keep "data/projects.csv" for GitHub Pages,
+   or paste a Google Sheets "Publish to web → CSV" link to edit the data in a shared sheet. */
+const DATA_URL = "data/projects.csv";
+
+const COLS = ["Project Name","Project Number","Project Responsible","Phase","On Hold","Foundation Type","Foundation Detail","Turbine Rating (MW)","Turbine Model","Bottom Flange Dia (m)","Project Size (MW)","Nr of Turbines","Water Depth (m)","Notes/Remarks"];
+const PHASES = [
+  {i:1,short:"Before auction",label:"1 - Before auction"},
+  {i:2,short:"Tendering",label:"2 - Tendering to contractors"},
+  {i:3,short:"Prep. construction",label:"3 - Preparation for construction"},
+  {i:4,short:"Construction",label:"4 - Under construction"},
+  {i:5,short:"Operational",label:"Operational"}];
+const FOUND = ["Monopile","Jacket","Floating","Multipile","Other","TBD"];
+const FCOLOR = {Monopile:"var(--mono-f)",Jacket:"var(--jacket-f)",Floating:"var(--float-f)",Multipile:"var(--multi-f)",Other:"var(--multi-f)",TBD:"var(--tbd-f)"};
+const LS_KEY = "copFinder.localEdits.v1";
+
+/* ===== helpers ===== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function lsGet(){try{return JSON.parse(localStorage.getItem(LS_KEY)||"null")}catch(e){return null}}
+function lsSet(v){try{v==null?localStorage.removeItem(LS_KEY):localStorage.setItem(LS_KEY,JSON.stringify(v))}catch(e){}}
+function toast(msg){const t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)}
+
+function parseCSV(text){
+  const rows=[];let row=[],f="",q=false;
+  text=text.replace(/^﻿/,"");
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++} else q=false } else f+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){row.push(f);f=""}
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n') i++; row.push(f);rows.push(row);row=[];f=""; }
+    else f+=c;
+  }
+  if(f!==""||row.length){row.push(f);rows.push(row)}
+  return rows.filter(r=>r.some(x=>x.trim()!==""));
+}
+function toCSV(list){
+  const e=v=>{v=String(v??"");return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  return [COLS.map(e).join(","),...list.map(r=>COLS.map(c=>e(r[c])).join(","))].join("\r\n")+"\r\n";
+}
+function rowsToRecords(rows){
+  const head=rows[0].map(h=>h.trim().toLowerCase());
+  return rows.slice(1).map(r=>{const o={};COLS.forEach(c=>{const k=head.indexOf(c.toLowerCase());o[c]=k>=0?String(r[k]??"").trim():""});return o}).filter(o=>o["Project Name"]);
+}
+
+/* numeric parsing: "35-49", "1-1.5 GW", "1+ GW", "12+", "8,6" -> {min,max} */
+function parseRange(v, gw){
+  if(v==null) return null;
+  let s=String(v).trim().replace(/,/g,".");
+  if(!s||/^(tbd|tbc|\?|n\/?a)$/i.test(s)) return null;
+  const isGW=gw && /gw/i.test(s);
+  const mul=isGW?1000:1;
+  const mx=s.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i);
+  if(mx){const t=+mx[1]*+mx[2]*mul;return {min:t,max:t}}
+  const nums=(s.match(/\d+(?:\.\d+)?/g)||[]).map(Number);
+  if(!nums.length) return null;
+  const a=nums[0]*mul, b=(nums.length>1?nums[1]:nums[0])*mul;
+  return {min:Math.min(a,b),max:Math.max(a,b),plus:/\+/.test(s)};
+}
+function phaseIndex(v){
+  const s=String(v||"").trim();
+  if(/oper/i.test(s)) return 5;
+  const m=s.match(/^[1-4]/); return m?+m[0]:0;
+}
+function turbineFamily(model){
+  let s=String(model||"").trim();
+  if(!s||/^(tbd|tbc|\?)$/i.test(s)) return "";
+  let m;
+  if((m=s.match(/V\s?(\d{3})/i))) return "Vestas V"+m[1];
+  if(/haliade/i.test(s)) return "GE Haliade-X";
+  if((m=s.match(/SG\s*([\d.]+-\d+)/i))) return "SG "+m[1];
+  if((m=s.match(/SG\s*\d+/i))) return m[0].replace(/\s+/," ");
+  s=s.replace(/\(.*?\)/g,"").replace(/[-–\s]*(TBD|TBC)\b/ig,"").trim();
+  return s;
+}
+const oem=f=>f.startsWith("Vestas")?"Vestas":f.startsWith("SG")?"Siemens Gamesa":f.split(" ")[0];
+function foundList(v){const l=String(v||"").split(/[;,/]/).map(x=>x.trim()).filter(Boolean).map(x=>{const k=FOUND.find(f=>f.toLowerCase()===x.toLowerCase());return k||(/mp|mono/i.test(x)?"Monopile":/jack/i.test(x)?"Jacket":/float/i.test(x)?"Floating":/multi/i.test(x)?"Multipile":/tbd|\?/i.test(x)?"TBD":"Other")});return l.length?[...new Set(l)]:["TBD"]}
+const DETAILS=[{k:"TP",fam:"Monopile",t:"Monopile with transition piece"},{k:"TP-less",fam:"Monopile",t:"Monopile without transition piece"},{k:"PP",fam:"Jacket",t:"Pre-piled jacket"},{k:"SBJ",fam:"Jacket",t:"Suction bucket jacket"}];
+function detailList(v){const out=[];String(v||"").split(/[;,/]/).forEach(x=>{x=x.trim();if(!x)return;let k;if(/tp\s*-?\s*less/i.test(x))k="TP-less";else if(/^tp\b/i.test(x))k="TP";else if(/^pp\b|pre-?pil/i.test(x))k="PP";else if(/sbj|suction/i.test(x))k="SBJ";else if(/^(tbd|tbc|\?)$/i.test(x))return;else k=x;if(!out.includes(k))out.push(k)});return out}
+const detFam=k=>(DETAILS.find(d=>d.k===k)||{}).fam||"";
+function initials(s){s=String(s||"").trim();if(!s)return"";if(/^[A-Z]{2,4}$/.test(s))return s;return s.split(/\s+/).map(w=>w[0]).join("").slice(0,3).toUpperCase()}
+function fmtMW(r){if(!r)return"";const f=x=>x>=1000?(x/1000).toLocaleString(undefined,{maximumFractionDigits:2})+" GW":Math.round(x).toLocaleString()+" MW";return r.min===r.max?f(r.min)+(r.plus?"+":""):f(r.min)+" – "+f(r.max)}
+function fmtDepth(r){if(!r)return"";return r.min===r.max?r.min+" m":r.min+"–"+r.max+" m"}
+
+/* ===== state ===== */
+let published=[];      // records from DATA_URL / seed
+let records=[];        // working copy (published + local edits)
+let source="";
+let changedNames=new Set();
+const S={q:"",ref:"",phases:new Set(),hold:true,found:new Set(),fdet:new Set(),capMin:null,capMax:null,turb:new Set(),dMin:null,dMax:null,onlyFull:false,view:"cards"};
+let sortCol="Project Name",sortDir=1,dbQ="";
+
+function enrich(r,idx){
+  return {raw:r,idx,name:r["Project Name"],phase:phaseIndex(r["Phase"]),hold:/^y/i.test(r["On Hold"]||""),
+    found:foundList(r["Foundation Type"]),fdetail:r["Foundation Detail"],det:detailList(r["Foundation Detail"]),cap:parseRange(r["Project Size (MW)"],true),
+    depth:parseRange(r["Water Depth (m)"]),rating:parseRange(r["Turbine Rating (MW)"]),fam:turbineFamily(r["Turbine Model"]),
+    resp:(r["Project Responsible"]||"").trim(),num:(r["Project Number"]||"").trim()};
+}
+let P=[];
+function rebuild(){P=records.map(enrich);$("#dbCount").textContent=records.length;buildFilterOptions();renderAll()}
+
+/* ===== loading ===== */
+async function load(){
+  let text="";
+  try{const r=await fetch(DATA_URL,{cache:"no-store"});if(!r.ok)throw 0;text=await r.text();source="live"}catch(e){text=$("#seed").textContent.trim();source="seed"}
+  published=rowsToRecords(parseCSV(text));
+  const local=lsGet();
+  if(local&&Array.isArray(local.records)){records=local.records;changedNames=new Set(local.changed||[])}else records=published.map(r=>({...r}));
+  rebuild();
+}
+function saveLocal(){lsSet({records,changed:[...changedNames],at:Date.now()});renderBanner()}
+function renderBanner(){
+  const b=$("#banner");
+  if(changedNames.size||lsGet()){
+    b.innerHTML=`<div class="banner"><span><b>Unpublished edits.</b> You changed ${changedNames.size||"some"} project${changedNames.size===1?"":"s"} in this browser. Other people will not see them until the CSV is updated on GitHub.</span><span class="sp"></span><button class="btn sm" id="bDl" type="button">Download CSV</button><button class="btn sm ghost" id="bDiscard" type="button">Discard my edits</button></div>`;
+    $("#bDl").onclick=downloadCSV;
+    $("#bDiscard").onclick=()=>{records=published.map(r=>({...r}));changedNames.clear();lsSet(null);rebuild();toast("Edits discarded")};
+  } else b.innerHTML="";
+}
+
+/* ===== filter UI ===== */
+function chip(label,pressed,on,extra=""){const b=document.createElement("button");b.type="button";b.className="chip";b.setAttribute("aria-pressed",pressed);b.innerHTML=extra+esc(label);b.onclick=on;return b}
+function buildFilterOptions(){
+  const ph=$("#fPhase");ph.innerHTML="";
+  PHASES.forEach(p=>{const n=P.filter(x=>x.phase===p.i).length;const c=chip((p.i<5?p.i+" · ":"")+p.short,S.phases.has(p.i),()=>{toggle(S.phases,p.i);syncAndRender()});c.insertAdjacentHTML("beforeend",` <span class="n">${n}</span>`);ph.appendChild(c)});
+  const fd=$("#fFound");fd.innerHTML="";
+  FOUND.forEach(f=>{const n=P.filter(x=>x.found.includes(f)).length;if(!n&&!S.found.has(f))return;const c=chip(f,S.found.has(f),()=>{toggle(S.found,f);syncAndRender()},`<i class="sw" style="background:${FCOLOR[f]}"></i>`);c.insertAdjacentHTML("beforeend",` <span class="n">${n}</span>`);fd.appendChild(c)});
+  const dt=$("#fDet");dt.innerHTML="";
+  const extra=[...new Set(P.flatMap(x=>x.det))].filter(k=>!DETAILS.some(d=>d.k===k));
+  [...DETAILS,...extra.map(k=>({k,t:k}))].forEach(d=>{const n=P.filter(x=>x.det.includes(d.k)).length;const c=chip(d.k,S.fdet.has(d.k),()=>{toggle(S.fdet,d.k);syncAndRender()});c.title=d.t+(n?"":" (no projects yet)");c.insertAdjacentHTML("beforeend",` <span class="n">${n}</span>`);dt.appendChild(c)});
+  const nodet=P.filter(x=>!x.det.length&&!x.found.includes("Floating")).length;
+  $("#detNote").textContent=nodet?`${nodet} fixed-bottom projects have no detail confirmed yet`:"";
+  const fams={};P.forEach(x=>{if(x.fam)fams[x.fam]=(fams[x.fam]||0)+1});
+  const ft=$("#fTurb");ft.innerHTML="";
+  Object.keys(fams).sort().forEach(f=>{const c=chip(f,S.turb.has(f),()=>{toggle(S.turb,f);syncAndRender()});c.insertAdjacentHTML("beforeend",` <span class="n">${fams[f]}</span>`);ft.appendChild(c)});
+  const tbd=P.filter(x=>!x.fam).length;
+  if(tbd) ft.insertAdjacentHTML("beforeend",`<span style="font-size:12.5px;color:var(--ink-3);align-self:center">${tbd} projects have no confirmed model</span>`);
+  presets("#capPre",[["< 500",null,500],["500–1,000",500,1000],["1–2 GW",1000,2000],["> 2 GW",2000,null]],"capMin","capMax");
+  presets("#dPre",[["< 30 m",null,30],["30–60 m",30,60],["60–100 m",60,100],["> 100 m",100,null]],"dMin","dMax");
+  const rs=$("#refSel");const cur=S.ref;
+  rs.innerHTML='<option value="">Choose a project to compare…</option>'+P.map(x=>`<option value="${esc(x.name)}">${esc(x.name)}</option>`).sort().join("");
+  rs.value=cur;
+}
+function presets(sel,list,a,b){
+  const el=$(sel);el.innerHTML="";
+  list.forEach(([l,mn,mx])=>el.appendChild(chip(l,S[a]===mn&&S[b]===mx&&(mn!=null||mx!=null),()=>{if(S[a]===mn&&S[b]===mx){S[a]=S[b]=null}else{S[a]=mn;S[b]=mx}syncInputs();syncAndRender()})));
+}
+function toggle(set,v){set.has(v)?set.delete(v):set.add(v)}
+function syncInputs(){$("#capMin").value=S.capMin??"";$("#capMax").value=S.capMax??"";$("#dMin").value=S.dMin??"";$("#dMax").value=S.dMax??"";$("#q").value=S.q;$("#fHold").checked=S.hold;$("#onlyFull").checked=S.onlyFull}
+function syncAndRender(){buildFilterOptions();renderFind()}
+
+function numIn(id,key){$(id).addEventListener("input",e=>{const v=e.target.value;S[key]=v===""?null:Math.max(0,+v);buildFilterOptions();renderFind()})}
+
+function setReference(name){
+  S.ref=name;
+  const x=P.find(p=>p.name===name);
+  if(!x){$("#refBox").hidden=true;syncAndRender();return}
+  S.phases=new Set(x.phase?[x.phase]:[]);
+  S.found=new Set(x.found.filter(f=>f!=="TBD"));
+  S.fdet=new Set(x.det);
+  S.turb=new Set(x.fam?[x.fam]:[]);
+  if(x.cap){S.capMin=Math.round(x.cap.min*0.7);S.capMax=Math.round(x.cap.max*1.3)}else{S.capMin=S.capMax=null}
+  if(x.depth){S.dMin=Math.max(0,Math.floor(Math.min(x.depth.min*0.75,x.depth.min-10)));S.dMax=Math.ceil(Math.max(x.depth.max*1.25,x.depth.max+10))}else{S.dMin=S.dMax=null}
+  S.q="";
+  $("#refBox").hidden=false;
+  $("#refTxt").innerHTML=`Filters are set from <b>${esc(x.name)}</b>: same phase, foundation type and detail, turbine, capacity ±30% and water depth ±25%. Adjust any filter to widen the search.`;
+  $("#refSel").value=name;
+  syncInputs();syncAndRender();
+  showTab("find");
+}
+
+/* ===== matching ===== */
+function rangeScore(r,mn,mx){
+  if(!r) return null;
+  const lo=mn??-Infinity, hi=mx??Infinity;
+  if(r.max>=lo&&r.min<=hi) return 1;
+  const gap=r.max<lo?lo-r.max:r.min-hi;
+  const ref=r.max<lo?lo:hi;
+  return Math.max(0,1-gap/Math.max(10,0.5*ref));
+}
+function evaluate(x){
+  const c=[];
+  if(S.phases.size){let s=null;if(x.phase){s=S.phases.has(x.phase)?1:([...S.phases].some(p=>Math.abs(p-x.phase)===1)?0.5:0)}c.push({k:"Phase",s})}
+  if(S.found.size){const known=x.found.filter(f=>f!=="TBD");let s=known.length?(known.some(f=>S.found.has(f))?1:0):(S.found.has("TBD")?1:null);c.push({k:"Foundation",s})}
+  if(S.fdet.size){let s=null;if(x.det.length){s=x.det.some(d=>S.fdet.has(d))?1:(x.det.some(d=>detFam(d)&&[...S.fdet].some(f=>detFam(f)===detFam(d)))?0.5:0)}else if(x.found.includes("Floating"))s=0;c.push({k:"Detail",s})}
+  if(S.capMin!=null||S.capMax!=null) c.push({k:"Capacity",s:rangeScore(x.cap,S.capMin,S.capMax)});
+  if(S.turb.size){let s=null;if(x.fam){s=S.turb.has(x.fam)?1:([...S.turb].some(t=>oem(t)===oem(x.fam))?0.5:0)}c.push({k:"Turbine",s})}
+  if(S.dMin!=null||S.dMax!=null) c.push({k:"Water depth",s:rangeScore(x.depth,S.dMin,S.dMax)});
+  const score=c.length?c.reduce((a,b)=>a+(b.s||0),0)/c.length:1;
+  return {crit:c,score,full:c.every(z=>z.s===1)};
+}
+function textHit(x){if(!S.q)return true;const q=S.q.toLowerCase();return [x.name,x.num,x.resp,x.raw["Notes/Remarks"],x.raw["Turbine Model"]].some(v=>String(v||"").toLowerCase().includes(q))}
+function activeCount(){return (S.phases.size?1:0)+(S.found.size?1:0)+(S.fdet.size?1:0)+((S.capMin!=null||S.capMax!=null)?1:0)+(S.turb.size?1:0)+((S.dMin!=null||S.dMax!=null)?1:0)}
+
+/* ===== render: cards ===== */
+function phaseTrack(x){
+  const cur=x.phase;
+  const bars=PHASES.map(p=>`<i class="${p.i<cur?"on":p.i===cur?"cur":""}"></i>`).join("");
+  const lab=cur?PHASES[cur-1]:null;
+  return `<div><div class="track" aria-hidden="true">${bars}</div><div class="track-l"><span>Phase</span><b>${lab?(cur<5?cur+" · ":"")+esc(lab.short):"Not set"}</b></div></div>`;
+}
+const DMAX=1000, dpos=d=>Math.sqrt(Math.min(d,DMAX)/DMAX)*100;
+function gauge(x){
+  const ticks=[0,30,100,300,1000].map(t=>`<span class="tk" style="left:${dpos(t)}%">${t}</span>`).join("");
+  const seg=x.depth?`<span class="dseg" style="left:${dpos(x.depth.min)}%;width:calc(${dpos(x.depth.max)-dpos(x.depth.min)}% + 4px)" title="${fmtDepth(x.depth)}"></span>`:"";
+  return `<div class="gauge-wrap"><div class="track-l" style="margin:0 0 2px"><span>Water depth</span><b>${x.depth?fmtDepth(x.depth):"No data"}</b></div><div class="gauge" aria-hidden="true"><span class="sea"></span>${seg}${ticks}</div></div>`;
+}
+function fBadges(x){
+  let h=x.found.map(f=>`<span class="fb"><i class="sw" style="background:${FCOLOR[f]}"></i>${esc(f)}</span>`).join("");
+  if(x.fdetail&&x.fdetail!=="TBD") h+=`<span class="fb">${esc(x.fdetail)}</span>`;
+  if(x.hold) h+=`<span class="fb hold">⏸ On hold</span>`;
+  return h;
+}
+const CM={1:["y","✓"],0.5:["p","≈"],0:["n","✕"]};
+function critHTML(ev){
+  if(!ev.crit.length) return "";
+  return `<div class="crit">${ev.crit.map(c=>{let k=c.s==null?["u","?"]:c.s===1?["y","✓"]:c.s>0?["p","≈"]:["n","✕"];const t=c.s==null?" no data":"";const st=c.s==null?"":c.s===1?"":c.s>0?" (close)":"";return `<span class="cm ${k[0]}" title="${c.k}${t}">${c.k}${st}${t}</span>`}).join("")}</div>`;
+}
+function card(x,ev){
+  const turb=x.fam||(x.raw["Turbine Model"]&&!/^tb[dc]$/i.test(x.raw["Turbine Model"])?x.raw["Turbine Model"]:"");
+  const rating=x.rating?(x.rating.min===x.rating.max?x.rating.min:x.rating.min+"–"+x.rating.max)+(x.rating.plus?"+":"")+" MW":"";
+  const sc=activeCount()?`<div class="score ${ev.full?"full":""}"><b class="num">${Math.round(ev.score*100)}%</b><small>${ev.full?"Full match":"Similar"}</small></div>`:"";
+  const who=x.resp?`<img src="assets/icon-person.svg" alt=""><span>Responsible: <b>${esc(x.resp)}</b></span>`:`<img src="assets/icon-person.svg" alt="" style="opacity:.35"><span class="dim">No responsible assigned yet</span>`;
+  return `<button type="button" class="card" data-name="${esc(x.name)}">
+    <div class="card-h"><div style="min-width:0"><h3>${esc(x.name)}</h3>${x.num?`<div class="pno mono">${esc(x.num)}</div>`:""}</div>${sc}</div>
+    <div class="badges">${fBadges(x)}</div>
+    ${phaseTrack(x)}
+    <dl class="kv"><div><dt>Capacity</dt><dd class="num ${x.cap?"":"dim"}">${x.cap?fmtMW(x.cap):"No data"}</dd></div>
+      <div><dt>Turbine</dt><dd class="${turb?"":"dim"}">${turb?esc(turb):"TBD"}</dd></div>
+      <div><dt>Rating</dt><dd class="num ${rating?"":"dim"}">${rating||"TBD"}</dd></div></dl>
+    ${gauge(x)}
+    ${critHTML(ev)}
+    <div class="who">${who}</div>
+  </button>`;
+}
+
+function renderFind(){
+  const n=activeCount();railLabel();
+  const pool=P.filter(x=>(S.hold||!x.hold)&&textHit(x)&&x.name!==S.ref);
+  const evs=pool.map(x=>({x,ev:evaluate(x)}));
+  let full=evs.filter(e=>e.ev.full), partial=evs.filter(e=>!e.ev.full&&e.ev.score>=0.6);
+  const sortF=(a,b)=>b.ev.score-a.ev.score||((b.x.cap?.min||0)-(a.x.cap?.min||0))||a.x.name.localeCompare(b.x.name);
+  full.sort(n?sortF:(a,b)=>(a.x.phase||9)-(b.x.phase||9)||a.x.name.localeCompare(b.x.name));partial.sort(sortF);
+  $("#onlyFullWrap").hidden=!n;
+  if(n){$("#resTitle").innerHTML=`<em>${full.length}</em> full match${full.length===1?"":"es"}`;$("#resSub").textContent=S.onlyFull?"Partial matches hidden":`${partial.length} similar project${partial.length===1?"":"s"} meet at least 60% of your criteria`;}
+  else{$("#resTitle").innerHTML=`All projects <em>${full.length}</em>`;$("#resSub").textContent="Use the filters, or start from an existing project, to find similar ones.";}
+  // active filter summary
+  const af=[];
+  if(S.ref) af.push("Compared with: "+S.ref);
+  if(S.phases.size) af.push("Phase: "+[...S.phases].sort().map(i=>PHASES[i-1].short).join(", "));
+  if(S.found.size) af.push("Foundation: "+[...S.found].join(", "));
+  if(S.fdet.size) af.push("Detail: "+[...S.fdet].join(", "));
+  if(S.capMin!=null||S.capMax!=null) af.push(`Capacity: ${S.capMin??0}–${S.capMax??"∞"} MW`);
+  if(S.turb.size) af.push("Turbine: "+[...S.turb].join(", "));
+  if(S.dMin!=null||S.dMax!=null) af.push(`Depth: ${S.dMin??0}–${S.dMax??"∞"} m`);
+  if(!S.hold) af.push("Excluding on hold");
+  if(S.q) af.push(`Search: “${S.q}”`);
+  $("#afs").innerHTML=af.map(t=>`<span class="af">${esc(t)}</span>`).join("");
+  const R=$("#results");
+  if(S.view==="chart"){R.innerHTML="";R.appendChild(depthChart(new Set(full.map(e=>e.x.name)),new Set(S.onlyFull?[]:partial.map(e=>e.x.name)),n));return}
+  let h="";
+  if(full.length) h+=`<div class="grid">${full.map(e=>card(e.x,e.ev)).join("")}</div>`;
+  else h+=`<div class="empty"><img src="assets/icon-research.svg" alt="">No project matches every criterion.${partial.length&&!S.onlyFull?" The closest projects are listed below.":" Try widening the capacity or depth range."}</div>`;
+  if(n&&!S.onlyFull&&partial.length) h+=`<div class="more"><h3>Similar projects, ranked by how many criteria they meet</h3><div class="grid">${partial.map(e=>card(e.x,e.ev)).join("")}</div></div>`;
+  R.innerHTML=h;
+}
+
+/* ===== depth × capacity chart ===== */
+const svgNS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent){const e=document.createElementNS(svgNS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);parent&&parent.appendChild(e);return e}
+function depthChart(fullSet,partSet,nActive){
+  const wrap=document.createElement("div");wrap.className="panel";
+  const pts=P.filter(x=>x.depth&&x.cap&&(S.hold||!x.hold));
+  const missing=P.length-pts.length;
+  wrap.innerHTML=`<h3>Water depth against project capacity</h3><p class="cap">Each line spans a project's water-depth range. ${nActive?"Matches are drawn solid, similar projects lighter, the rest faded.":"Pick filters to highlight matches."} ${missing?missing+" projects without depth or capacity data are not shown.":""}</p>
+  <div class="legend">${["Monopile","Jacket","Floating","Multipile","TBD"].filter(f=>P.some(x=>x.found[0]===f)).map(f=>`<span><i style="background:${FCOLOR[f]}"></i>${f}</span>`).join("")}</div><div class="chart-wrap"></div>`;
+  const W=860,H=440,m={l:64,r:20,t:14,b:46};
+  const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,width:"100%",role:"img","aria-label":"Water depth versus capacity chart",style:"min-width:560px;display:block"});
+  const maxCap=Math.max(1000,...pts.map(x=>x.cap.max));const yMax=Math.ceil(maxCap/500)*500;
+  const X=d=>m.l+Math.sqrt(Math.min(d,DMAX)/DMAX)*(W-m.l-m.r);
+  const Y=c=>H-m.b-(c/yMax)*(H-m.t-m.b);
+  for(let c=0;c<=yMax;c+=500){el("line",{x1:m.l,x2:W-m.r,y1:Y(c),y2:Y(c),class:"gridl"},svg);el("text",{x:m.l-8,y:Y(c)+4,"text-anchor":"end",class:"axis-n"},svg).textContent=c>=1000?(c/1000)+" GW":c}
+  [0,10,25,50,100,250,500,1000].forEach(d=>{el("line",{x1:X(d),x2:X(d),y1:m.t,y2:H-m.b,class:"gridl","stroke-dasharray":"2 4"},svg);el("text",{x:X(d),y:H-m.b+16,"text-anchor":"middle",class:"axis-n"},svg).textContent=d});
+  el("text",{x:(m.l+W-m.r)/2,y:H-6,"text-anchor":"middle",class:"axis-t"},svg).textContent="Water depth (m, square-root scale)";
+  const yl=el("text",{x:14,y:(m.t+H-m.b)/2,"text-anchor":"middle",class:"axis-t",transform:`rotate(-90 14 ${(m.t+H-m.b)/2})`},svg);yl.textContent="Project capacity";
+  const tip=$("#tip");
+  const order=pts.slice().sort((a,b)=>(fullSet.has(a.name)?2:partSet.has(a.name)?1:0)-(fullSet.has(b.name)?2:partSet.has(b.name)?1:0));
+  order.forEach(x=>{
+    const st=!nActive?1:fullSet.has(x.name)?1:partSet.has(x.name)?.5:.12;
+    const c=(x.cap.min+x.cap.max)/2, col=FCOLOR[x.found[0]]||FCOLOR.TBD;
+    const g=el("g",{opacity:st,style:"cursor:pointer"},svg);
+    const x1=X(x.depth.min),x2=Math.max(X(x.depth.max),x1+0.01),y=Y(c);
+    el("line",{x1,x2,y1:y,y2:y,stroke:col,"stroke-width":3,"stroke-linecap":"round"},g);
+    [x1,x2].forEach(cx=>el("circle",{cx,cy:y,r:4.5,fill:col,stroke:"var(--surface)","stroke-width":2},g));
+    el("line",{x1:x1-6,x2:x2+6,y1:y,y2:y,stroke:"transparent","stroke-width":16},g);
+    g.addEventListener("mousemove",e=>{tip.hidden=false;tip.innerHTML=`<b>${esc(x.name)}</b><span>${fmtDepth(x.depth)} · ${fmtMW(x.cap)}<br>${esc(x.found.join(", "))}${x.fam?" · "+esc(x.fam):""}<br>${x.resp?"Responsible: "+esc(x.resp):"No responsible yet"}</span>`;tip.style.left=Math.min(e.clientX+14,innerWidth-270)+"px";tip.style.top=(e.clientY+14)+"px"});
+    g.addEventListener("mouseleave",()=>tip.hidden=true);
+    g.addEventListener("click",()=>{tip.hidden=true;openDetail(x.name)});
+  });
+  wrap.querySelector(".chart-wrap").appendChild(svg);
+  return wrap;
+}
+
+/* ===== overview ===== */
+function renderOverview(){
+  const tot=P.reduce((a,x)=>a+(x.cap?x.cap.min:0),0);
+  const withResp=P.filter(x=>x.resp).length;
+  const active=P.filter(x=>x.phase&&x.phase<5&&!x.hold).length;
+  const fl=P.filter(x=>x.found.includes("Floating")).length;
+  let h=`<div class="kpis">
+    <div class="kpi"><img src="assets/icon-offshore-wind.svg" alt=""><b class="num">${P.length}</b><span>projects tracked</span></div>
+    <div class="kpi"><img src="assets/icon-capacity.svg" alt=""><b class="num">${(tot/1000).toLocaleString(undefined,{maximumFractionDigits:1})} GW</b><span>combined capacity (lower bound)</span></div>
+    <div class="kpi"><img src="assets/icon-water.svg" alt=""><b class="num">${fl}</b><span>floating projects</span></div>
+    <div class="kpi"><img src="assets/icon-person.svg" alt=""><b class="num">${withResp} / ${P.length}</b><span>have a responsible assigned</span></div></div>`;
+  const fk=["Monopile","Jacket","Floating","Multipile","Other","TBD"].filter(f=>P.some(x=>x.found[0]===f));
+  const rows=[...PHASES.map(p=>({label:(p.i<5?p.i+" · ":"")+p.short,i:p.i})),{label:"Phase not set",i:0}].filter(r=>P.some(x=>x.phase===r.i));
+  const maxN=Math.max(...rows.map(r=>P.filter(x=>x.phase===r.i).length));
+  h+=`<div class="ov-row"><div class="panel"><h3>Projects by phase and foundation</h3><p class="cap">Click a bar segment to see those projects.</p>
+    <div class="legend">${fk.map(f=>`<span><i style="background:${FCOLOR[f]}"></i>${f}</span>`).join("")}</div>
+    <div class="hbar">${rows.map(r=>{const xs=P.filter(x=>x.phase===r.i);return `<span>${esc(r.label)}</span><div class="bar" style="width:${xs.length/maxN*100}%">${fk.map(f=>{const n=xs.filter(x=>x.found[0]===f).length;return n?`<i data-ph="${r.i}" data-f="${f}" title="${n} ${f}" style="flex:${n};background:${FCOLOR[f]};cursor:pointer"></i>`:""}).join("")}</div><span class="v">${xs.length}</span>`}).join("")}</div></div>`;
+  const fields=[["Project Responsible","Responsible"],["Project Number","Project number"],["Phase","Phase"],["Foundation Type","Foundation (not TBD)"],["Turbine Model","Turbine model"],["Turbine Rating (MW)","Turbine rating"],["Project Size (MW)","Capacity"],["Water Depth (m)","Water depth"],["Nr of Turbines","Nr of turbines"],["Bottom Flange Dia (m)","Bottom flange dia"]];
+  const filled=(r,k)=>{const v=String(r[k]||"").trim();if(!v)return false;if(k==="Foundation Type")return !/^tbd$/i.test(v);if(k==="Turbine Model")return !!turbineFamily(v);return !/^(tbd|tbc|\?)$/i.test(v)};
+  h+=`<div class="panel"><h3>Data completeness</h3><p class="cap">Share of projects with each field filled in. Gaps here are the best places to add information.</p><div class="comp">${fields.map(([k,l])=>{const n=records.filter(r=>filled(r,k)).length;return `<div class="comp-r"><span>${l}</span><span class="t"><i style="width:${n/Math.max(1,records.length)*100}%"></i></span><span class="v">${n}/${records.length}</span></div>`}).join("")}</div></div></div>`;
+  $("#ov").innerHTML=h;
+  $("#ov").querySelectorAll("[data-ph]").forEach(b=>b.onclick=()=>{resetState();const p=+b.dataset.ph;if(p)S.phases.add(p);if(b.dataset.f!=="TBD")S.found.add(b.dataset.f);syncInputs();showTab("find");syncAndRender()});
+}
+
+/* ===== database table ===== */
+const SHOW=["Project Name","Project Number","Project Responsible","Phase","On Hold","Foundation Type","Foundation Detail","Turbine Rating (MW)","Turbine Model","Project Size (MW)","Nr of Turbines","Water Depth (m)","Bottom Flange Dia (m)","Notes/Remarks"];
+function renderDB(){
+  const th=$("#tbl thead"),tb=$("#tbl tbody");
+  th.innerHTML="<tr>"+SHOW.map(c=>`<th data-c="${esc(c)}" ${c===sortCol?`aria-sort="${sortDir>0?"ascending":"descending"}"`:""}>${esc(c)}</th>`).join("")+"</tr>";
+  th.querySelectorAll("th").forEach(t=>t.onclick=()=>{const c=t.dataset.c;sortDir=c===sortCol?-sortDir:1;sortCol=c;renderDB()});
+  const q=dbQ.toLowerCase();
+  const numCols={"Turbine Rating (MW)":r=>parseRange(r)?.min,"Project Size (MW)":r=>parseRange(r,true)?.min,"Water Depth (m)":r=>parseRange(r)?.min,"Nr of Turbines":r=>parseRange(r)?.min,"Bottom Flange Dia (m)":r=>parseRange(r)?.min};
+  let list=records.map((r,i)=>({r,i})).filter(o=>!q||COLS.some(c=>String(o.r[c]||"").toLowerCase().includes(q)));
+  list.sort((a,b)=>{const f=numCols[sortCol];let A=a.r[sortCol]||"",B=b.r[sortCol]||"";if(f){A=f(A);B=f(B);if(A==null)return 1;if(B==null)return -1;return (A-B)*sortDir}if(!A)return 1;if(!B)return -1;return A.localeCompare(B,undefined,{numeric:true})*sortDir});
+  tb.innerHTML=list.map(({r,i})=>`<tr data-i="${i}" class="${changedNames.has(r["Project Name"])?"changed":""}">${SHOW.map(c=>{const v=r[c]||"";return `<td class="${c==="Notes/Remarks"?"wrap":""} ${v?"":"miss"}">${v?esc(v):"—"}</td>`}).join("")}</tr>`).join("")||`<tr><td colspan="${SHOW.length}">No rows match “${esc(dbQ)}”.</td></tr>`;
+  tb.querySelectorAll("tr[data-i]").forEach(t=>t.onclick=()=>openEdit(+t.dataset.i));
+}
+
+/* ===== detail drawer ===== */
+function closeLayer(){$("#layer").innerHTML=""}
+function openDetail(name){
+  const x=P.find(p=>p.name===name);if(!x)return;
+  const r=x.raw;
+  const rows=COLS.filter(c=>c!=="Project Name").map(c=>{const v=r[c]||"";return `<dt>${esc(c)}</dt><dd class="${v?"":"dim"}">${v?esc(v):"Not filled in"}</dd>`}).join("");
+  $("#layer").innerHTML=`<div class="scrim" id="scrim"><div class="drawer" role="dialog" aria-modal="true" aria-label="${esc(x.name)}">
+    <div class="drawer-h"><div><h2>${esc(x.name)}</h2>${x.num?`<div class="mono" style="color:var(--ink-3);margin-top:4px">${esc(x.num)}</div>`:""}</div><button class="btn ghost" id="dClose" type="button" aria-label="Close">✕</button></div>
+    <div class="badges">${fBadges(x)}</div>
+    <div class="contact">${x.resp?`<img src="assets/icon-person.svg" alt=""><div><p>Project responsible</p><strong id="respTxt">${esc(x.resp)}</strong></div><span style="flex:1"></span><button class="btn sm" id="cpResp" type="button">Copy</button>`:`<img src="assets/icon-person.svg" alt="" style="opacity:.35"><div><p>No responsible assigned yet.</p><strong style="font-size:14px">Know who runs this project? Add them in the database.</strong></div>`}</div>
+    ${phaseTrack(x)}${gauge(x)}
+    <dl class="dl">${rows}</dl>
+    <div class="actions"><button class="btn primary" id="dSim" type="button">Find similar projects</button><button class="btn" id="dEdit" type="button">Edit project</button></div>
+  </div></div>`;
+  $("#scrim").onclick=e=>{if(e.target.id==="scrim")closeLayer()};
+  $("#dClose").onclick=closeLayer;$("#dClose").focus();
+  $("#dSim").onclick=()=>{closeLayer();setReference(x.name);window.scrollTo({top:0})};
+  $("#dEdit").onclick=()=>openEdit(x.idx);
+  const cp=$("#cpResp");if(cp)cp.onclick=()=>copyText(x.resp,"Copied "+x.resp);
+}
+async function copyText(t,msg){try{await navigator.clipboard.writeText(t);toast(msg||"Copied")}catch(e){const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");toast(msg||"Copied")}catch(_){toast("Select the text and copy it manually")}ta.remove()}}
+
+/* ===== edit form ===== */
+function openEdit(i){
+  const isNew=i==null||i<0;
+  const r=isNew?Object.fromEntries(COLS.map(c=>[c,""])):records[i];
+  const fl=isNew?[]:foundList(r["Foundation Type"]);
+  const v=c=>esc(r[c]||"");
+  const phaseOpts=['<option value="">Not set</option>',...PHASES.map(p=>`<option ${phaseIndex(r["Phase"])===p.i?"selected":""}>${esc(p.label)}</option>`)].join("");
+  $("#layer").innerHTML=`<div class="scrim" id="scrim"><form class="drawer" id="ef" role="dialog" aria-modal="true" aria-label="Edit project" novalidate>
+    <div class="drawer-h"><h2>${isNew?"Add a project":"Edit "+esc(r["Project Name"])}</h2><button class="btn ghost" id="dClose" type="button" aria-label="Close">✕</button></div>
+    <div class="form">
+      <label class="full">Project name *<input class="inp" id="e_name" name="Project Name" value="${v("Project Name")}" required></label>
+      <label>Project number<input class="inp" id="e_num" name="Project Number" value="${v("Project Number")}" placeholder="JOB12345"></label>
+      <label>Project responsible<input class="inp" id="e_resp" name="Project Responsible" value="${v("Project Responsible")}" placeholder="Initials or full name"></label>
+      <label>Phase<select class="inp" id="e_phase" name="Phase">${phaseOpts}</select></label>
+      <label>On hold<select class="inp" id="e_hold" name="On Hold"><option ${/^y/i.test(r["On Hold"])?"":"selected"}>No</option><option ${/^y/i.test(r["On Hold"])?"selected":""}>Yes</option></select></label>
+      <div class="full"><label>Foundation type</label><div class="checks">${["Monopile","Jacket","Floating","Multipile","Other"].map(f=>`<label><input type="checkbox" name="ft" value="${f}" ${fl.includes(f)?"checked":""}> ${f}</label>`).join("")}<span class="hint">Leave all unticked for TBD</span></div></div>
+      <label>Foundation detail <span class="hint">TP, TP-less, PP, SBJ…</span><input class="inp" id="e_fd" name="Foundation Detail" list="detOpts" value="${v("Foundation Detail")}"><datalist id="detOpts">${DETAILS.map(d=>`<option value="${d.k}">${d.t}</option>`).join("")}</datalist></label>
+      <label>Turbine model<input class="inp" id="e_tm" name="Turbine Model" value="${v("Turbine Model")}" placeholder="Vestas V236-15MW"></label>
+      <label>Turbine rating (MW)<input class="inp" id="e_tr" name="Turbine Rating (MW)" value="${v("Turbine Rating (MW)")}" placeholder="15 or 14-15"></label>
+      <label>Project size (MW) <span class="hint">MW, or add GW</span><input class="inp" id="e_ps" name="Project Size (MW)" value="${v("Project Size (MW)")}" placeholder="1000 or 1.2 GW"></label>
+      <label>Nr of turbines<input class="inp" id="e_nt" name="Nr of Turbines" value="${v("Nr of Turbines")}"></label>
+      <label>Water depth (m)<input class="inp" id="e_wd" name="Water Depth (m)" value="${v("Water Depth (m)")}" placeholder="35-49"></label>
+      <label>Bottom flange dia (m)<input class="inp" id="e_bf" name="Bottom Flange Dia (m)" value="${v("Bottom Flange Dia (m)")}"></label>
+      <label class="full">Notes / remarks<textarea class="inp" id="e_notes" name="Notes/Remarks" rows="3">${v("Notes/Remarks")}</textarea></label>
+    </div>
+    <div id="eErr" style="color:var(--hold);font-size:14px"></div>
+    <div class="actions"><button class="btn primary" type="submit">${isNew?"Add project":"Save changes"}</button><button class="btn" type="button" id="eCancel">Cancel</button><span class="sp"></span>${isNew?"":`<button class="btn danger" type="button" id="eDel">Delete</button>`}</div>
+    <div id="eConfirm"></div>
+  </form></div>`;
+  $("#scrim").onclick=e=>{if(e.target.id==="scrim")closeLayer()};
+  $("#dClose").onclick=closeLayer;$("#eCancel").onclick=closeLayer;
+  $("#e_name").focus();
+  const del=$("#eDel");
+  if(del) del.onclick=()=>{$("#eConfirm").innerHTML=`<div class="confirm">Delete <b>${esc(r["Project Name"])}</b>?<span style="flex:1"></span><button class="btn sm danger" type="button" id="eDelYes">Delete project</button><button class="btn sm" type="button" id="eDelNo">Keep it</button></div>`;
+    $("#eDelNo").onclick=()=>$("#eConfirm").innerHTML="";
+    $("#eDelYes").onclick=()=>{changedNames.add(r["Project Name"]);records.splice(i,1);saveLocal();closeLayer();rebuild();toast("Project deleted")}};
+  $("#ef").onsubmit=e=>{
+    e.preventDefault();
+    const f=e.target, o={};
+    COLS.forEach(c=>{const inp=f.elements[c];if(inp)o[c]=inp.value.trim()});
+    const ft=[...f.querySelectorAll('input[name="ft"]:checked')].map(x=>x.value);
+    o["Foundation Type"]=ft.length?ft.join("; "):"TBD";
+    if(!o["Project Name"]){$("#eErr").textContent="Give the project a name before saving.";return}
+    const dup=records.findIndex((x,k)=>k!==i&&x["Project Name"].toLowerCase()===o["Project Name"].toLowerCase());
+    if(dup>=0){$("#eErr").textContent="Another project already has this name. Use a different name or edit that project.";return}
+    if(isNew) records.push(o); else {if(r["Project Name"]!==o["Project Name"]) changedNames.add(r["Project Name"]);records[i]=o}
+    changedNames.add(o["Project Name"]);
+    saveLocal();closeLayer();rebuild();toast(isNew?"Project added":"Changes saved");
+  };
+}
+
+/* ===== import / export ===== */
+function downloadBlob(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+function downloadCSV(){downloadBlob(new Blob(["﻿"+toCSV(records)],{type:"text/csv;charset=utf-8"}),"projects.csv");toast("projects.csv downloaded")}
+function downloadXLSX(){if(!window.XLSX){toast("Excel library did not load. Use Download CSV instead.");return}const ws=XLSX.utils.json_to_sheet(records,{header:COLS});ws["!cols"]=COLS.map(c=>({wch:Math.max(12,c.length+2)}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Projects");XLSX.writeFile(wb,"COP_projects.xlsx");toast("COP_projects.xlsx downloaded")}
+async function importFile(file){
+  try{
+    let rows;
+    if(/\.csv$/i.test(file.name)) rows=parseCSV(await file.text());
+    else{if(!window.XLSX)throw new Error("Excel library did not load");const wb=XLSX.read(await file.arrayBuffer());rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:"",raw:false})}
+    if(!rows.length||!rows[0].some(h=>String(h).trim().toLowerCase()==="project name")) throw new Error('The first row needs the column headers, including "Project Name". Download the CSV to get the template.');
+    const recs=rowsToRecords(rows.map(r=>r.map(x=>String(x))));
+    if(!recs.length) throw new Error("No projects found in the file.");
+    records=recs;changedNames=new Set(recs.map(r=>r["Project Name"]));saveLocal();rebuild();toast(`Imported ${recs.length} projects`);
+  }catch(err){toast(err.message||"Could not read that file")}
+}
+
+/* ===== tabs & wiring ===== */
+function showTab(t){
+  ["find","overview","database"].forEach(k=>{$("#view-"+k).hidden=k!==t;$("#tab-"+k).setAttribute("aria-selected",k===t)});
+  if(t==="overview")renderOverview();if(t==="database")renderDB();
+  try{history.replaceState(null,"","#"+t)}catch(e){}
+}
+function renderAll(){renderFind();renderBanner();if(!$("#view-overview").hidden)renderOverview();if(!$("#view-database").hidden)renderDB()}
+function resetState(){S.q="";S.ref="";S.phases.clear();S.found.clear();S.fdet.clear();S.turb.clear();S.capMin=S.capMax=S.dMin=S.dMax=null;S.hold=true;S.onlyFull=false;$("#refBox").hidden=true}
+
+function railLabel(){const n=activeCount()+(S.q?1:0);const open=!$("#rail").classList.contains("collapsed");$("#railToggle").textContent=(open?"Hide filters":"Show filters")+(n?` (${n} active)`:"");$("#railToggle").setAttribute("aria-expanded",open)}
+$("#rail").classList.add("collapsed");
+$("#railToggle").onclick=()=>{$("#rail").classList.toggle("collapsed");railLabel()};
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+$("#q").addEventListener("input",e=>{S.q=e.target.value.trim();renderFind()});
+$("#fHold").onchange=e=>{S.hold=e.target.checked;renderFind()};
+$("#onlyFull").onchange=e=>{S.onlyFull=e.target.checked;renderFind()};
+numIn("#capMin","capMin");numIn("#capMax","capMax");numIn("#dMin","dMin");numIn("#dMax","dMax");
+$("#refSel").onchange=e=>{if(e.target.value)setReference(e.target.value);else{resetState();syncInputs();syncAndRender()}};
+$("#refClear").onclick=()=>{resetState();syncInputs();syncAndRender()};
+$("#reset").onclick=()=>{resetState();syncInputs();syncAndRender()};
+$("#vCards").onclick=()=>{S.view="cards";$("#vCards").setAttribute("aria-pressed",true);$("#vChart").setAttribute("aria-pressed",false);renderFind()};
+$("#vChart").onclick=()=>{S.view="chart";$("#vChart").setAttribute("aria-pressed",true);$("#vCards").setAttribute("aria-pressed",false);renderFind()};
+$("#results").addEventListener("click",e=>{const c=e.target.closest(".card");if(c)openDetail(c.dataset.name)});
+$("#dbQ").addEventListener("input",e=>{dbQ=e.target.value.trim();renderDB()});
+$("#addBtn").onclick=()=>openEdit(-1);
+$("#dlCsv").onclick=downloadCSV;$("#dlXlsx").onclick=downloadXLSX;
+$("#cpCsv").onclick=()=>copyText(toCSV(records),"CSV copied to clipboard");
+$("#imp").onchange=e=>{const f=e.target.files[0];if(f)importFile(f);e.target.value=""};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("#layer").innerHTML)closeLayer()});
+
+load().then(()=>{const h=(location.hash||"").slice(1);if(["find","overview","database"].includes(h))showTab(h)});
+</script>
+
+</body>
+</html>
